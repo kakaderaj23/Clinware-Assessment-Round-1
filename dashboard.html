@@ -702,6 +702,8 @@
             const errorsContainer = document.getElementById("errorList");
             errorsContainer.innerHTML = "";
 
+            const errorsList = data.errors || data.validation_errors;
+
             if (data.is_valid) {
                 badge.className = "status-badge valid";
                 statusText.innerText = "Valid";
@@ -712,8 +714,8 @@
                 badge.className = "status-badge invalid";
                 statusText.innerText = "Invalid";
                 
-                if (data.validation_errors && data.validation_errors.length > 0) {
-                    data.validation_errors.forEach((error, index) => {
+                if (errorsList && errorsList.length > 0) {
+                    errorsList.forEach((error, index) => {
                         const errorDiv = document.createElement("div");
                         errorDiv.className = "error-item";
                         errorDiv.innerHTML = `
@@ -735,7 +737,7 @@
             // 5. Compute and Render Metrics
             let fieldsParsedCount = 0;
             let fieldsMissingCount = 0;
-            const validationErrorsCount = data.validation_errors ? data.validation_errors.length : 0;
+            const validationErrorsCount = errorsList ? errorsList.length : 0;
 
             // We have 5 core fields in models.py: patient_id, name, diagnoses, medications, insurance_id
             if (data.patient_id) fieldsParsedCount++; else fieldsMissingCount++;
