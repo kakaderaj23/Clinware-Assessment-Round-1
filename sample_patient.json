@@ -1,0 +1,25 @@
+{
+  "resourceType": "Patient",
+  "id": "PT-5561",
+  "name": [
+    {
+      "use": "official",
+      "given": ["John", "Jacob"],
+      "family": "Smith",
+      "text": "John Jacob Smith"
+    }
+  ],
+  "diagnoses": [
+    "Essential hypertension",
+    "Gastro-esophageal reflux disease without esophagitis"
+  ],
+  "medications": [
+    "Lisinopril 10mg oral tablet",
+    "Omeprazole 20mg oral capsule"
+  ],
+  "insurance": [
+    {
+      "id": "INS-BLUE-CROSS-9988"
+    }
+  ]
+}
