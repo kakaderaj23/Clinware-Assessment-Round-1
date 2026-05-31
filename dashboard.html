@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinware — Patient Ingestion Dashboard</title>
+    <meta name="description" content="Secure clinical dashboard for validating and visualizing FHIR Patient Ingestion Pipeline data.">
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Modern CSS Reset & Variable Definitions */
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            
+            --clinical-green: #10b981;
+            --clinical-green-glow: rgba(16, 185, 129, 0.15);
+            --clinical-red: #ef4444;
+            --clinical-red-glow: rgba(239, 68, 68, 0.15);
+            --clinical-blue: #3b82f6;
+            --clinical-blue-glow: rgba(59, 130, 246, 0.15);
+            
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.04) 0%, transparent 40%);
+        }
+
+        /* Top Header Bar */
+        .header-bar {
+            background-color: rgba(15, 23, 42, 0.8);
+            border-bottom: 1px solid var(--border-glass);
+            backdrop-filter: blur(12px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-symbol {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--clinical-blue), var(--clinical-green));
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .header-bar h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .clinical-clock {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            background-color: rgba(30, 41, 59, 0.5);
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-glass);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .clock-pulse {
+            width: 6px;
+            height: 6px;
+            background-color: var(--clinical-green);
+            border-radius: 50%;
+            animation: pulse-green 2s infinite;
+        }
+
+        /* Container Layout */
+        .dashboard-container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            flex-grow: 1;
+        }
+
+        /* Metrics Bar Card Row */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .metric-card {
+            background-color: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-premium);
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            animation: card-fade-in 0.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .metric-card.parsed::before { background-color: var(--clinical-blue); }
+        .metric-card.missing::before { background-color: var(--clinical-green); }
+        .metric-card.errors::before { background-color: var(--clinical-red); }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            font-family: var(--font-mono);
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+        }
+
+        .metric-value.blue { color: #60a5fa; }
+        .metric-value.green { color: #34d399; }
+        .metric-value.red { color: #f87171; }
+
+        /* Main Grid Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background-color: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            box-shadow: var(--shadow-premium);
+            transition: var(--transition-smooth);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: card-fade-in 0.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        /* Responsive Layout Allocations */
+        .card-demographics { grid-column: span 6; animation-delay: 0.05s; }
+        .card-status { grid-column: span 6; animation-delay: 0.1s; }
+        .card-diagnoses { grid-column: span 6; animation-delay: 0.15s; }
+        .card-medications { grid-column: span 6; animation-delay: 0.2s; }
+
+        @media (max-width: 1024px) {
+            .card-demographics, .card-status, .card-diagnoses, .card-medications {
+                grid-column: span 12;
+            }
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-header h2 svg {
+            width: 18px;
+            height: 18px;
+            opacity: 0.8;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+            flex-grow: 1;
+        }
+
+        /* Demographic Row Component */
+        .demographic-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .demographic-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .demographic-row label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .demographic-value {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .protected-tag {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--clinical-green);
+            background-color: var(--clinical-green-glow);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        .protected-hash {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: #60a5fa;
+            word-break: break-all;
+            background-color: rgba(30, 41, 59, 0.4);
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-glass);
+            flex-grow: 1;
+        }
+
+        /* Clinical Lists */
+        .clinical-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .clinical-item {
+            background-color: rgba(30, 41, 59, 0.3);
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            padding: 0.85rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: var(--transition-smooth);
+        }
+
+        .clinical-item:hover {
+            transform: translateX(4px);
+            background-color: rgba(30, 41, 59, 0.5);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .clinical-index {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            font-weight: 700;
+            background-color: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .clinical-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Integrity Status Component */
+        .status-badge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 1.5rem 0;
+        }
+
+        .status-badge {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+        }
+
+        .status-badge.valid {
+            color: var(--clinical-green);
+            background-color: var(--clinical-green-glow);
+            border: 2px solid var(--clinical-green);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.2);
+        }
+
+        .status-badge.invalid {
+            color: var(--clinical-red);
+            background-color: var(--clinical-red-glow);
+            border: 2px solid var(--clinical-red);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.2);
+            animation: alert-pulse 1.5s infinite alternate;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-badge.valid .status-indicator { background-color: var(--clinical-green); }
+        .status-badge.invalid .status-indicator { background-color: var(--clinical-red); }
+
+        .validation-errors-table-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        .validation-errors-container {
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .error-item {
+            background-color: var(--clinical-red-glow);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            color: #f87171;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-icon {
+            font-weight: 800;
+            font-family: var(--font-mono);
+            background-color: rgba(239, 68, 68, 0.2);
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .no-errors-notice {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding: 1rem;
+            background-color: rgba(16, 185, 129, 0.05);
+            border: 1px dashed rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+        }
+
+        /* Keyframes Animations */
+        @keyframes card-fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes alert-pulse {
+            from {
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+                border-color: rgba(239, 68, 68, 0.6);
+            }
+            to {
+                box-shadow: 0 0 35px rgba(239, 68, 68, 0.45);
+                border-color: rgba(239, 68, 68, 1);
+            }
+        }
+
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        /* SVG Icon styling */
+        svg.icon-path {
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Sticky Header -->
+    <header class="header-bar">
+        <div class="header-title-container">
+            <div class="logo-symbol">C</div>
+            <h1>Clinware — Patient Ingestion Dashboard</h1>
+        </div>
+        <div class="clinical-clock">
+            <div class="clock-pulse"></div>
+            <span id="liveClock">INGESTION MONITOR ACTIVE</span>
+        </div>
+    </header>
+
+    <div class="dashboard-container">
+        
+        <!-- Live Metrics Cards -->
+        <section class="metrics-grid">
+            <!-- Fields Parsed Metric -->
+            <div class="metric-card parsed">
+                <div class="metric-label">Fields Parsed Successfully</div>
+                <div class="metric-value blue" id="metricParsed">0</div>
+            </div>
+            <!-- Missing Fields Metric -->
+            <div class="metric-card missing">
+                <div class="metric-label">Fields Missing / Defaulted</div>
+                <div class="metric-value green" id="metricMissing">0</div>
+            </div>
+            <!-- Integrity Faults Metric -->
+            <div class="metric-card errors">
+                <div class="metric-label">Data Validation Errors</div>
+                <div class="metric-value red" id="metricErrors">0</div>
+            </div>
+        </section>
+
+        <!-- Main Cards Grid -->
+        <main class="main-grid">
+            
+            <!-- Card 1: Patient Demographics -->
+            <section class="dashboard-card card-demographics">
+                <div class="card-header">
+                    <h2>
+                        <svg class="icon-path" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        Patient Demographics
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="demographic-list">
+                        <div class="demographic-row">
+                            <label>Full Patient Name</label>
+                            <div class="demographic-value" id="demoName">N/A</div>
+                        </div>
+                        <div class="demographic-row">
+                            <label>Patient Identifier (PII Protected)</label>
+                            <div class="demographic-value">
+                                <span class="protected-hash" id="demoId">N/A</span>
+                                <span class="protected-tag">Protected</span>
+                            </div>
+                        </div>
+                        <div class="demographic-row">
+                            <label>Insurance Code (PII Protected)</label>
+                            <div class="demographic-value">
+                                <span class="protected-hash" id="demoInsurance">N/A</span>
+                                <span class="protected-tag">Protected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Card 2: Integrity Verification -->
+            <section class="dashboard-card card-status">
+                <div class="card-header">
+                    <h2>
+                        <svg class="icon-path" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        Integrity Status
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="status-badge-container">
+                        <div class="status-badge valid" id="statusBadge">
+                            <div class="status-indicator"></div>
+                            <span id="statusText">Valid</span>
+                        </div>
+                    </div>
+                    <div class="validation-errors-container">
+                        <div class="validation-errors-table-title" id="errorTitle">Validation Inconsistencies</div>
+                        <div id="errorList">
+                            <div class="no-errors-notice">Zero validation inconsistencies detected. Ready for clinical ingestion.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Card 3: Clinical Diagnoses -->
+            <section class="dashboard-card card-diagnoses">
+                <div class="card-header">
+                    <h2>
+                        <svg class="icon-path" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                        Clinical Diagnoses
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <ul class="clinical-list" id="diagnosesList">
+                        <!-- Rendered dynamically -->
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Card 4: Prescribed Medications -->
+            <section class="dashboard-card card-medications">
+                <div class="card-header">
+                    <h2>
+                        <svg class="icon-path" viewBox="0 0 24 24"><path d="m10.5 20.5 10-10a4.95 4.95 0 0 0-7-7l-10 10a4.95 4.95 0 0 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+                        Prescribed Medications
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <ul class="clinical-list" id="medicationsList">
+                        <!-- Rendered dynamically -->
+                    </ul>
+                </div>
+            </section>
+            
+        </main>
+    </div>
+
+    <script>
+        /**
+         * Placeholder payload representing standard, verified clinical PII-masked patient data.
+         * Satisfies dashboard load-immediately requirement.
+         */
+        const PATIENT_DATA = {
+            patient_id: "c08a6bb8128adeada4342506dd06929fc6ddcf997afb50f2ded7e759e4c203e7",
+            name: "John Jacob Smith",
+            insurance_id: "3ba5b33fd3f5b1c9165963c595551b690fd9cc89874eb3872250bfa0f7ddd91b",
+            diagnoses: [
+                "Essential hypertension",
+                "Gastro-esophageal reflux disease without esophagitis"
+            ],
+            medications: [
+                "Lisinopril 10mg oral tablet",
+                "Omeprazole 20mg oral capsule"
+            ],
+            is_valid: true,
+            validation_errors: []
+        };
+
+        /**
+         * Safely refresh and render all dashboard sections based on incoming Patient schema.
+         * 
+         * @param {Object} data - Standard client-side representation of the Patient schema.
+         */
+        function loadPatientData(data) {
+            if (!data) return;
+
+            // 1. Render Demographics
+            document.getElementById("demoName").innerText = data.name || "N/A";
+            document.getElementById("demoId").innerText = data.patient_id || "N/A";
+            document.getElementById("demoInsurance").innerText = data.insurance_id || "N/A";
+
+            // 2. Render Diagnoses
+            const diagnosesContainer = document.getElementById("diagnosesList");
+            diagnosesContainer.innerHTML = "";
+            if (data.diagnoses && data.diagnoses.length > 0) {
+                data.diagnoses.forEach((diagnosis, index) => {
+                    const item = document.createElement("li");
+                    item.className = "clinical-item";
+                    item.innerHTML = `
+                        <div class="clinical-index">${index + 1}</div>
+                        <div class="clinical-name">${escapeHTML(diagnosis)}</div>
+                    `;
+                    diagnosesContainer.appendChild(item);
+                });
+            } else {
+                diagnosesContainer.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; padding: 1rem; width: 100%;">
+                        (No active diagnoses recorded)
+                    </div>
+                `;
+            }
+
+            // 3. Render Medications
+            const medsContainer = document.getElementById("medicationsList");
+            medsContainer.innerHTML = "";
+            if (data.medications && data.medications.length > 0) {
+                data.medications.forEach((medication, index) => {
+                    const item = document.createElement("li");
+                    item.className = "clinical-item";
+                    item.innerHTML = `
+                        <div class="clinical-index">${index + 1}</div>
+                        <div class="clinical-name">${escapeHTML(medication)}</div>
+                    `;
+                    medsContainer.appendChild(item);
+                });
+            } else {
+                medsContainer.innerHTML = `
+                    <div style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; padding: 1rem; width: 100%;">
+                        (No active medications prescribed)
+                    </div>
+                `;
+            }
+
+            // 4. Render Integrity Status Badge & Discovered Errors
+            const badge = document.getElementById("statusBadge");
+            const statusText = document.getElementById("statusText");
+            const errorsContainer = document.getElementById("errorList");
+            errorsContainer.innerHTML = "";
+
+            if (data.is_valid) {
+                badge.className = "status-badge valid";
+                statusText.innerText = "Valid";
+                errorsContainer.innerHTML = `
+                    <div class="no-errors-notice">Zero validation inconsistencies detected. Ready for clinical ingestion.</div>
+                `;
+            } else {
+                badge.className = "status-badge invalid";
+                statusText.innerText = "Invalid";
+                
+                if (data.validation_errors && data.validation_errors.length > 0) {
+                    data.validation_errors.forEach((error, index) => {
+                        const errorDiv = document.createElement("div");
+                        errorDiv.className = "error-item";
+                        errorDiv.innerHTML = `
+                            <div class="error-icon">!</div>
+                            <div>${escapeHTML(error)}</div>
+                        `;
+                        errorsContainer.appendChild(errorDiv);
+                    });
+                } else {
+                    errorsContainer.innerHTML = `
+                        <div class="error-item">
+                            <div class="error-icon">!</div>
+                            <div>Validation failed with unknown issues.</div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 5. Compute and Render Metrics
+            let fieldsParsedCount = 0;
+            let fieldsMissingCount = 0;
+            const validationErrorsCount = data.validation_errors ? data.validation_errors.length : 0;
+
+            // We have 5 core fields in models.py: patient_id, name, diagnoses, medications, insurance_id
+            if (data.patient_id) fieldsParsedCount++; else fieldsMissingCount++;
+            if (data.name) fieldsParsedCount++; else fieldsMissingCount++;
+            if (data.insurance_id) fieldsParsedCount++; else fieldsMissingCount++;
+            
+            if (data.diagnoses && data.diagnoses.length > 0) fieldsParsedCount++; else fieldsMissingCount++;
+            if (data.medications && data.medications.length > 0) fieldsParsedCount++; else fieldsMissingCount++;
+
+            document.getElementById("metricParsed").innerText = fieldsParsedCount;
+            document.getElementById("metricMissing").innerText = fieldsMissingCount;
+            document.getElementById("metricErrors").innerText = validationErrorsCount;
+        }
+
+        /**
+         * Escape raw strings to prevent potential client-side HTML injections.
+         */
+        function escapeHTML(str) {
+            if (!str) return "";
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize dynamic clinical clock
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+            const dateString = now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' });
+            document.getElementById("liveClock").innerText = `${dateString}  |  ${timeString} UTC`;
+        }
+
+        // Initialize clock and render static data
+        setInterval(updateClock, 1000);
+        updateClock();
+        loadPatientData(PATIENT_DATA);
+    </script>
+</body>
+</html>
