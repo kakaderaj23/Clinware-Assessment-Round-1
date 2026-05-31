@@ -5,6 +5,7 @@ to check for missing, empty, or incomplete data attributes.
 
 from typing import List, Tuple
 from models import Patient
+from security import hash_sensitive_field
 
 
 def validate_patient(patient: Patient) -> Tuple[bool, List[str]]:
@@ -25,6 +26,10 @@ def validate_patient(patient: Patient) -> Tuple[bool, List[str]]:
     """
     # Time Complexity: # O(1) as the checks are key/field lookups on fixed fields.
     # Space Complexity: # O(E) where E is the number of errors discovered.
+
+    # PII fields are hashed before validation to prevent plaintext exposure in logs or outputs.
+    patient.patient_id = hash_sensitive_field(patient.patient_id)
+    patient.insurance_id = hash_sensitive_field(patient.insurance_id)
 
     validation_errors: List[str] = []
 

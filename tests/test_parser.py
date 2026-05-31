@@ -8,6 +8,7 @@ from typing import Any, Dict
 from models import Patient
 from parser import parse_fhir_patient
 from validator import validate_patient
+from security import hash_sensitive_field
 
 
 class TestPatientIngestionPipeline(unittest.TestCase):
@@ -200,6 +201,29 @@ class TestPatientIngestionPipeline(unittest.TestCase):
         self.assertEqual(patient.diagnoses, [])
         self.assertEqual(patient.medications, [])
         self.assertIsNone(patient.insurance_id)
+
+    def test_hash_sensitive_field_valid_input(self) -> None:
+        """
+        Verify that hash_sensitive_field returns a valid 64-character SHA-256 hex string for normal input.
+        """
+        raw_value = "PT-12345"
+        hashed = hash_sensitive_field(raw_value)
+        self.assertIsNotNone(hashed)
+        self.assertEqual(len(hashed), 64)
+        # Check that it consists of valid lowercase hexadecimal characters
+        self.assertTrue(all(char in "0123456789abcdef" for char in hashed))
+        # Known SHA-256 digest for "PT-12345"
+        import hashlib
+        expected = hashlib.sha256(raw_value.encode("utf-8")).hexdigest()
+        self.assertEqual(hashed, expected)
+
+    def test_hash_sensitive_field_empty_input(self) -> None:
+        """
+        Verify that hash_sensitive_field returns None when passed None or an empty string.
+        """
+        self.assertIsNone(hash_sensitive_field(None))
+        self.assertIsNone(hash_sensitive_field(""))
+        self.assertIsNone(hash_sensitive_field("   "))
 
 
 if __name__ == "__main__":

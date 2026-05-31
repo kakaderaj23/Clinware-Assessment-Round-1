@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 from models import Patient
 from parser import parse_fhir_patient
 from validator import validate_patient
+from security import hash_sensitive_field
 
 # Configure clean logging to standard error
 logging.basicConfig(
@@ -87,9 +88,13 @@ def print_patient_summary(patient: Patient, is_valid: bool, errors: List[str]) -
     print("           PATIENT INGESTION PIPELINE REPORT")
     print("=" * 50)
 
-    print(f"Patient ID:    {patient.patient_id or 'N/A'}")
+    # Replace PII fields with their hashed versions for protection
+    patient_id_hashed = hash_sensitive_field(patient.patient_id)
+    insurance_id_hashed = hash_sensitive_field(patient.insurance_id)
+
+    print(f"Patient ID:    {patient_id_hashed or 'N/A'} [PROTECTED]")
     print(f"Full Name:     {patient.name or 'N/A'}")
-    print(f"Insurance ID:  {patient.insurance_id or 'N/A'}")
+    print(f"Insurance ID:  {insurance_id_hashed or 'N/A'} [PROTECTED]")
 
     print("\n--- Diagnoses ---")
     if patient.diagnoses:
